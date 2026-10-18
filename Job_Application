@@ -1,351 +1,1117 @@
 <!DOCTYPE html>
 <html lang="uz">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AZIKO Job Application</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        background-color: rgb(15, 2, 26);
-        color: yellow;
-        margin: 0;
-        padding: 40px;
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>TIBEX ICU v3.0 — Real Sensor Fusion</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { background: #04070d; color: #f1f5f9; font-family: ui-monospace, 'Courier New', monospace; padding: 8px; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  body { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+  .card { width: 100%; max-width: 440px; background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 10px; }
+  .card-title { font-size: 10px; font-weight: 700; color: #64748b; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 8px; }
+
+  .monitor-box { width: 100%; max-width: 440px; background: #070c16; border: 2px solid #00f5d4; border-radius: 14px; overflow: hidden; box-shadow: 0 0 25px rgba(0,245,212,0.18); transition: border-color 0.25s; }
+  canvas { width: 100%; height: auto; display: block; background: #050811; }
+
+  /* Ruxsat qatorlari */
+  .perm-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 4px; font-size: 12px; border-bottom: 1px solid #1e293b; gap: 8px; }
+  .perm-row:last-child { border-bottom: none; }
+  .perm-label { display: flex; align-items: center; gap: 6px; font-weight: 600; flex: 1; min-width: 0; }
+  .perm-label small { color: #64748b; font-size: 9px; display: block; }
+  .perm-btn { padding: 7px 12px; font-size: 10px; font-weight: 700; font-family: inherit; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px; background: #475569; color: #cbd5e1; min-width: 90px; }
+  .perm-btn.on { background: #22c55e; color: #020617; }
+  .perm-btn.pending { background: #eab308; color: #020617; }
+  .perm-btn.denied { background: #ef4444; color: #ffffff; }
+  .perm-btn.unsupported { background: #7f1d1d; color: #fecaca; }
+  .perm-btn:active:not(:disabled) { transform: scale(0.96); }
+  .perm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* Slayderlar */
+  .slider-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 12px; gap: 6px; }
+  .slider-row span { min-width: 130px; font-weight: 700; }
+  .slider-row input[type="range"] { flex: 1; accent-color: #00f5d4; height: 6px; }
+  .slider-row.sim span::after { content: " [SIM]"; color: #64748b; font-size: 9px; font-weight: 400; }
+
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  button.action { padding: 11px 6px; font-size: 11px; font-weight: 700; font-family: inherit; border: none; border-radius: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.4px; transition: transform 0.08s, opacity 0.15s; }
+  button.action:active:not(:disabled) { transform: scale(0.96); }
+  button.action:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-start { background: #00f5d4; color: #020617; }
+  .btn-cam   { background: #3b82f6; color: #ffffff; }
+  .btn-cam.on{ background: #22c55e; }
+  .btn-tg    { background: #eab308; color: #020617; }
+  .btn-rec   { background: #f43f5e; color: #ffffff; }
+  .btn-reset { background: #475569; color: #ffffff; }
+
+  .tg-inputs { display: flex; gap: 6px; margin-top: 8px; }
+  .tg-inputs input { flex: 1; background: #020617; border: 1px solid #334155; color: #38bdf8; padding: 8px; border-radius: 6px; font-size: 11px; font-family: inherit; user-select: text; -webkit-user-select: text; min-width: 0; }
+
+  #logBox { font-size: 11px; color: #4ade80; margin-top: 8px; padding: 8px; background: #020617; border-radius: 6px; line-height: 1.45; word-break: break-word; min-height: 44px; max-height: 140px; overflow-y: auto; border: 1px solid #1e293b; }
+
+  /* Kamera ko'rinishi */
+  #camWrap { display: none; width: 100%; max-width: 440px; position: relative; border-radius: 12px; overflow: hidden; border: 2px solid #22c55e; background: #000; }
+  #camWrap.show { display: block; }
+  #camVideo { width: 100%; display: block; background: #000; }
+  #camOverlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; color: #fff; font-size: 12px; font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+  #camOverlay .pulse-ring {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.6);
+    animation: pulse 1.2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(1.3); opacity: 0; }
+  }
+  #camQuality {
+    position: absolute; bottom: 6px; left: 6px; right: 6px;
+    background: rgba(0,0,0,0.7); color: #fff; padding: 4px 8px;
+    border-radius: 4px; font-size: 10px; font-weight: 700;
+    display: flex; justify-content: space-between;
+  }
+
+  #httpsWarn { display: none; background: #7f1d1d; color: #fecaca; padding: 8px 12px; border-radius: 8px; font-size: 11px; width: 100%; max-width: 440px; border: 1px solid #dc2626; }
+</style>
+</head>
+<body>
+
+<div id="httpsWarn">⚠️ <strong>HTTPS kerak!</strong> Kamera va sensorlar faqat <code>https://</code> yoki <code>localhost</code> da ishlaydi.</div>
+
+<div class="monitor-box" id="monBox">
+  <canvas id="icuCanvas" width="720" height="680"></canvas>
+</div>
+
+<!-- RUXSATLAR -->
+<div class="card">
+  <div class="card-title">⚙️ Sensor Ruxsatlari (brauzer oynasi ochiladi)</div>
+
+  <div class="perm-row">
+    <div class="perm-label">
+      <div>📷 Kamera (PPG)<br><small>yurak urishi — flesh + barmoq</small></div>
+    </div>
+    <button class="perm-btn" id="btnPermCam" type="button">So'rash</button>
+  </div>
+
+  <div class="perm-row">
+    <div class="perm-label">
+      <div>📱 Harakat / Akselerometr<br><small>nafas olish + artefakt</small></div>
+    </div>
+    <button class="perm-btn" id="btnPermMotion" type="button">So'rash</button>
+  </div>
+
+  <div class="perm-row">
+    <div class="perm-label">
+      <div>🎤 Mikrofon<br><small>video yozuvga ovoz</small></div>
+    </div>
+    <button class="perm-btn" id="btnPermMic" type="button">So'rash</button>
+  </div>
+
+  <div class="perm-row">
+    <div class="perm-label">
+      <div>🔔 Bildirishnoma<br><small>kritik holat ogohlantirish</small></div>
+    </div>
+    <button class="perm-btn" id="btnPermNotif" type="button">So'rash</button>
+  </div>
+</div>
+
+<!-- KAMERA KO'RINISHI -->
+<div id="camWrap">
+  <video id="camVideo" playsinline muted autoplay></video>
+  <div id="camOverlay">
+    <div class="pulse-ring"></div>
+  </div>
+  <div id="camQuality">
+    <span id="camQualityLeft">Barmoqni kameraga bosing</span>
+    <span id="camQualityRight">SQI: --</span>
+  </div>
+</div>
+
+<!-- BOSHQARUV -->
+<div class="card">
+  <div class="card-title">🩺 Simulyatsiya (kamera ishlamasa)</div>
+  <div class="slider-row sim">
+    <span id="lblK" style="color:#00f5d4;">K⁺: 4.2</span>
+    <input type="range" id="rngK" min="2.0" max="8.5" step="0.1" value="4.2">
+  </div>
+  <div class="slider-row sim">
+    <span id="lblGlu" style="color:#38bdf8;">Glyukoza: 5.2</span>
+    <input type="range" id="rngGlu" min="1.8" max="28.0" step="0.2" value="5.2">
+  </div>
+  <div class="slider-row sim">
+    <span id="lblBpm" style="color:#a7f3d0;">Puls: 75</span>
+    <input type="range" id="rngBpm" min="45" max="175" step="1" value="75">
+  </div>
+
+  <div class="btn-grid">
+    <button class="action btn-start" id="btnAudio" type="button">🔊 Ovoz Yoqish</button>
+    <button class="action btn-cam"   id="btnCamToggle" type="button">📷 Kamera Puls</button>
+    <button class="action btn-rec"   id="btnRec" type="button">🎬 6s Video</button>
+    <button class="action btn-reset" id="btnReset" type="button">🔄 Tiklash</button>
+  </div>
+</div>
+
+<!-- TELEGRAM -->
+<div class="card">
+  <div class="card-title">✈️ Telegram Bot</div>
+  <div class="tg-inputs">
+    <input type="text" id="botToken" placeholder="Bot Token">
+    <input type="text" id="chatId"   placeholder="Chat ID">
+  </div>
+  <div class="btn-grid">
+    <button class="action btn-tg" id="btnTg" type="button">✈️ Xabar Yuborish</button>
+    <button class="action btn-reset" id="btnStatus" type="button">📊 Sensor Holati</button>
+  </div>
+  <div id="logBox">> Tizim tayyor. Yuqoridagi "So'rash" tugmalaridan birini bosing.</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ============================================================
+  // HTTPS tekshiruvi
+  // ============================================================
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    document.getElementById('httpsWarn').style.display = 'block';
+  }
+
+  // ============================================================
+  // Yordamchilar
+  // ============================================================
+  const U = {
+    mean: a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0,
+    std: a => { if (!a.length) return 0; const m = U.mean(a); return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/a.length); },
+    median: a => { if (!a.length) return 0; const s = [...a].sort((x,y)=>x-y); const m = Math.floor(s.length/2); return s.length%2 ? s[m] : (s[m-1]+s[m])/2; },
+    clamp: (v,lo,hi) => Math.max(lo, Math.min(hi, v)),
+    // Moving average detrending
+    detrend(arr, win) {
+      const n = arr.length;
+      const out = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const lo = Math.max(0, i - win);
+        const hi = Math.min(n, i + win + 1);
+        let s = 0;
+        for (let j = lo; j < hi; j++) s += arr[j];
+        out[i] = arr[i] - s / (hi - lo);
+      }
+      return out;
+    },
+    // Peak detection: returns indices of peaks
+    detectPeaks(sig, minDistSamples, thresholdFactor) {
+      const absMax = sig.reduce((m,x)=>Math.max(m,Math.abs(x)),0);
+      if (absMax < 1e-9) return [];
+      const th = absMax * (thresholdFactor || 0.3);
+      const peaks = [];
+      let lastIdx = -minDistSamples;
+      for (let i = 1; i < sig.length - 1; i++) {
+        if (sig[i] > sig[i-1] && sig[i] > sig[i+1] && sig[i] > th) {
+          if (i - lastIdx >= minDistSamples) {
+            peaks.push(i);
+            lastIdx = i;
+          }
+        }
+      }
+      return peaks;
+    }
+  };
+
+  // ============================================================
+  // DOM
+  // ============================================================
+  const canvas  = document.getElementById('icuCanvas');
+  const ctx     = canvas.getContext('2d');
+  const monBox  = document.getElementById('monBox');
+  const logBox  = document.getElementById('logBox');
+  const videoEl = document.getElementById('camVideo');
+  const camWrap = document.getElementById('camWrap');
+  const camQualityL = document.getElementById('camQualityLeft');
+  const camQualityR = document.getElementById('camQualityRight');
+
+  const W = canvas.width, H = canvas.height;
+
+  const rngK   = document.getElementById('rngK');
+  const rngGlu = document.getElementById('rngGlu');
+  const rngBpm = document.getElementById('rngBpm');
+  const lblK   = document.getElementById('lblK');
+  const lblGlu = document.getElementById('lblGlu');
+  const lblBpm = document.getElementById('lblBpm');
+
+  const btnPermCam   = document.getElementById('btnPermCam');
+  const btnPermMotion= document.getElementById('btnPermMotion');
+  const btnPermMic   = document.getElementById('btnPermMic');
+  const btnPermNotif = document.getElementById('btnPermNotif');
+
+  const btnAudio  = document.getElementById('btnAudio');
+  const btnCamT   = document.getElementById('btnCamToggle');
+  const btnRec    = document.getElementById('btnRec');
+  const btnReset  = document.getElementById('btnReset');
+  const btnTg     = document.getElementById('btnTg');
+  const btnStatus = document.getElementById('btnStatus');
+
+  function log(m) { logBox.textContent = m; try { console.log('[TIBEX]', m); } catch(e){} }
+  function setPermBtn(btn, state, txt) {
+    btn.className = 'perm-btn' + (state ? ' ' + state : '');
+    btn.textContent = txt;
+  }
+
+  // ============================================================
+  // GLOBAL STATE
+  // ============================================================
+  const S = {
+    // streams
+    camStream: null, micStream: null,
+    camActive: false, motionActive: false,
+    // audio
+    audioCtx: null, masterGain: null, streamDest: null, soundOn: false,
+    // ppg
+    ppg: { samples: [], bpm: 0, quality: 0, lastBeat: 0, lastAnalyze: 0 },
+    // motion
+    motion: { samples: [], resp: 0, motionLevel: 0, lastAnalyze: 0 },
+    // manual sliders
+    k: 4.2, glu: 5.2, bpmManual: 75,
+    // display
+    activeBpm: 75, activeBpmSrc: 'sim',
+    activeResp: 0, activeRespSrc: '--',
+    // canvas buffers
+    ecg: new Float32Array(W),
+    ppgBuf: new Float32Array(W),
+    accBuf: new Float32Array(W),
+    phase: 0, prevPhase: 0,
+    lastTs: 0, lastFrame: 0,
+    // notifications
+    notifLast: 0,
+    // help counters
+    camStartTs: 0
+  };
+
+  // ============================================================
+  // RUXSATLAR — har biri mustaqil brauzer oynasini ochadi
+  // ============================================================
+
+  // --- KAMERA ---
+  btnPermCam.addEventListener('click', async () => {
+    if (S.camStream) {
+      // allaqachon ochilgan - o'chirish
+      S.camStream.getTracks().forEach(t => t.stop());
+      S.camStream = null;
+      S.camActive = false;
+      videoEl.srcObject = null;
+      camWrap.classList.remove('show');
+      btnCamT.classList.remove('on');
+      btnCamT.textContent = '📷 Kamera Puls';
+      setPermBtn(btnPermCam, '', 'Qayta ochish');
+      log('Kamera yopildi.');
+      return;
+    }
+
+    setPermBtn(btnPermCam, 'pending', 'Kutilmoqda...');
+    log('📷 Brauzer kamera ruxsat oynasini ochdi...');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 320 },
+          height: { ideal: 320 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false
+      });
+
+      S.camStream = stream;
+      videoEl.srcObject = stream;
+      await videoEl.play().catch(() => {});
+
+      // Flesh (torch)
+      const track = stream.getVideoTracks()[0];
+      if (track && track.applyConstraints) {
+        try {
+          await track.applyConstraints({ advanced: [{ torch: true }] });
+          log('✅ Kamera + flesh yoqildi. Barmog\'ingizni orqa kameraga qo\'ying.');
+        } catch (e) {
+          log('✅ Kamera yoqildi (flesh qo\'llab-quvvatlanmadi). Barmoqni bosing.');
+        }
       }
 
-      section {
-        max-width: 600px;
-        margin: 0 auto;
-        background-color: #160d3f;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+      camWrap.classList.add('show');
+      btnCamT.classList.add('on');
+      btnCamT.textContent = '🔴 Kamerani O\'chirish';
+      setPermBtn(btnPermCam, 'on', '✓ Ruxsat berildi');
+      S.camActive = true;
+      S.camStartTs = performance.now();
+      S.ppg.samples = [];
+      S.ppg.bpm = 0;
+      S.ppg.quality = 0;
+      S.ppg.lastBeat = 0;
+
+    } catch (err) {
+      setPermBtn(btnPermCam, 'denied', '✗ Rad etildi');
+      log('❌ Kamera rad etildi: ' + (err.name || '') + ' — ' + (err.message || err));
+    }
+  });
+
+  // --- MOTION (Akselerometr + Gyroskop) ---
+  btnPermMotion.addEventListener('click', async () => {
+    if (S.motionActive) {
+      stopMotion();
+      setPermBtn(btnPermMotion, '', 'Qayta yoqish');
+      return;
+    }
+
+    setPermBtn(btnPermMotion, 'pending', 'Kutilmoqda...');
+
+    // iOS 13+ ruxsat so'rovi — sinxron tarzda, foydalanuvchi bosishiga javoban
+    if (typeof DeviceMotionEvent === 'undefined') {
+      setPermBtn(btnPermMotion, 'unsupported', 'Qo\'llanmaydi');
+      log('❌ Bu qurilma/brauzer DeviceMotion sensorini qo\'llab-quvvatlamaydi.');
+      return;
+    }
+
+    let granted = true;
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      // iOS
+      try {
+        log('📱 iOS ruxsat oynasi ochilmoqda...');
+        const res = await DeviceMotionEvent.requestPermission();
+        granted = res === 'granted';
+        if (!granted) {
+          setPermBtn(btnPermMotion, 'denied', '✗ Rad etildi');
+          log('❌ Harakat sensori rad etildi.');
+          return;
+        }
+      } catch (err) {
+        setPermBtn(btnPermMotion, 'denied', '✗ Xato');
+        log('❌ Sensor ruxsat xatosi: ' + err.message);
+        return;
       }
+    }
 
-      h1 {
+    // Android yoki ruxsat berilgan iOS
+    startMotion();
+    setPermBtn(btnPermMotion, 'on', '✓ Faol');
+    log('✅ Akselerometr + gyroskop faol. Nafas olish o\'lchanadi.');
+  });
 
-        text-align: center;
-        color: #58a6ff;
+  function startMotion() {
+    S.motionActive = true;
+    S.motion.samples = [];
+    window.addEventListener('devicemotion', onDeviceMotion, { passive: true });
+  }
+
+  function stopMotion() {
+    S.motionActive = false;
+    window.removeEventListener('devicemotion', onDeviceMotion);
+    S.motion.samples = [];
+    S.motion.resp = 0;
+    S.motion.motionLevel = 0;
+    log('Harakat sensori to\'xtatildi.');
+  }
+
+  function onDeviceMotion(ev) {
+    const t = performance.now();
+    const acc = ev.accelerationIncludingGravity || ev.acceleration;
+    if (!acc) return;
+
+    const x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
+    const rot = ev.rotationRate || {};
+    const mag = Math.sqrt(x*x + y*y + z*z);
+
+    const buf = S.motion.samples;
+    buf.push({ t, x, y, z, mag, gx: rot.alpha||0, gy: rot.beta||0, gz: rot.gamma||0 });
+    const cutoff = t - 15000;
+    while (buf.length && buf[0].t < cutoff) buf.shift();
+  }
+
+  // --- MIKROFON ---
+  btnPermMic.addEventListener('click', async () => {
+    if (S.micStream) {
+      S.micStream.getTracks().forEach(t => t.stop());
+      S.micStream = null;
+      setPermBtn(btnPermMic, '', 'Qayta ochish');
+      log('Mikrofon yopildi.');
+      return;
+    }
+    setPermBtn(btnPermMic, 'pending', 'Kutilmoqda...');
+    log('🎤 Brauzer mikrofon ruxsat oynasini ochdi...');
+    try {
+      S.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setPermBtn(btnPermMic, 'on', '✓ Faol');
+      log('✅ Mikrofon faol. Video yozuvga ovoz qo\'shiladi.');
+    } catch (err) {
+      setPermBtn(btnPermMic, 'denied', '✗ Rad etildi');
+      log('❌ Mikrofon rad etildi: ' + err.message);
+    }
+  });
+
+  // --- BILDIRISHNOMA ---
+  btnPermNotif.addEventListener('click', async () => {
+    if (!('Notification' in window)) {
+      setPermBtn(btnPermNotif, 'unsupported', 'Qo\'llanmaydi');
+      log('❌ Bildirishnoma API mavjud emas.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      setPermBtn(btnPermNotif, 'on', '✓ Faol');
+      log('Bildirishnoma allaqachon yoqilgan.');
+      return;
+    }
+    setPermBtn(btnPermNotif, 'pending', 'Kutilmoqda...');
+    try {
+      const p = await Notification.requestPermission();
+      if (p === 'granted') {
+        setPermBtn(btnPermNotif, 'on', '✓ Faol');
+        log('✅ Bildirishnoma faol.');
+        try {
+          new Notification('TIBEX ICU', { body: 'Bildirishnoma tizimi tayyor!', tag: 'tibex-hello' });
+        } catch (e) {}
+      } else {
+        setPermBtn(btnPermNotif, 'denied', '✗ Rad etildi');
+        log('❌ Bildirishnoma rad etildi: ' + p);
       }
-      p {
-        text-align: center;
-        font-size: 14px;
-        color: #9da5b4;
+    } catch (err) {
+      setPermBtn(btnPermNotif, 'denied', '✗ Xato');
+      log('❌ Xato: ' + err.message);
+    }
+  });
+
+  // ============================================================
+  // PPG ANALIZ (kamera → yurak urishi)
+  // ============================================================
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = 32; tmpCanvas.height = 32;
+  const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
+  let lastCamRead = 0;
+
+  function readCameraSample(now) {
+    // 30 ms dan tez o'qimaymiz (kamera ~30 fps)
+    if (now - lastCamRead < 30) return null;
+    lastCamRead = now;
+    if (!S.camActive || videoEl.readyState < 2) return null;
+    if (!videoEl.videoWidth) return null;
+
+    tmpCtx.drawImage(videoEl, 0, 0, 32, 32);
+    const d = tmpCtx.getImageData(0, 0, 32, 32).data;
+    let sumR = 0, sumG = 0, sumB = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      sumR += d[i]; sumG += d[i+1]; sumB += d[i+2];
+    }
+    const N = 1024;
+    const r = sumR/N, g = sumG/N, b = sumB/N;
+
+    // Perfuziya signali: qizil dominant, yashil-fon
+    // (R - G) normalizatsiya bilan yorug'likka chidamli
+    const denom = r + g + b + 1;
+    const perfusion = (r - g) / denom * 1000;
+
+    return { t: now, r, g, b, perfusion };
+  }
+
+  function analyzePPG() {
+    const buf = S.ppg.samples;
+    if (buf.length < 60) return;
+
+    const vals = buf.map(s => s.perfusion);
+    const times = buf.map(s => s.t);
+
+    // 1) Detrend (sliding mean, ~15 sample)
+    const win = Math.min(15, Math.floor(vals.length / 4));
+    const detrended = U.detrend(vals, win);
+
+    // 2) Peak detection — min 250 ms interval (240 BPM max)
+    const avgDt = (times[times.length-1] - times[0]) / (times.length - 1);
+    const minSamples = Math.max(2, Math.round(250 / avgDt));
+    const peaks = U.detectPeaks(detrended, minSamples, 0.30);
+
+    if (peaks.length < 3) {
+      S.ppg.bpm = 0;
+      S.ppg.quality = 0;
+      return;
+    }
+
+    // 3) RR intervals
+    const rr = [];
+    for (let i = 1; i < peaks.length; i++) {
+      rr.push(times[peaks[i]] - times[peaks[i-1]]);
+    }
+    const med = U.median(rr);
+    const good = rr.filter(x => Math.abs(x - med) < med * 0.4);
+
+    if (good.length < 2) {
+      S.ppg.bpm = 0;
+      S.ppg.quality = 0;
+      return;
+    }
+
+    const cleanMean = U.mean(good);
+    const bpm = 60000 / cleanMean;
+
+    // 4) Sifat indeksi
+    let q = Math.round(good.length / rr.length * 100);
+    // Interval barqarorligi
+    const sd = U.std(good);
+    const cv = sd / cleanMean;
+    if (cv < 0.05) q = Math.min(100, q + 15);
+    else if (cv > 0.20) q = Math.max(0, q - 20);
+
+    // 5) Sanity check
+    if (bpm < 35 || bpm > 210) { S.ppg.bpm = 0; S.ppg.quality = 0; return; }
+
+    // Smoothing (median of last 3)
+    S.ppg.bpm = S.ppg.bpm ? Math.round((S.ppg.bpm + bpm + bpm) / 3) : Math.round(bpm);
+    S.ppg.quality = q;
+  }
+
+  // ============================================================
+  // MOTION ANALIZ (akselerometr → nafas + harakat)
+  // ============================================================
+  function analyzeMotion() {
+    const buf = S.motion.samples;
+    if (buf.length < 60) return;
+
+    // Harakat darajasi — yuqori chastotali tebranish
+    const mags = buf.map(s => s.mag);
+    const mean = U.mean(mags);
+    const variance = U.mean(mags.map(m => (m - mean) * (m - mean)));
+    S.motion.motionLevel = U.clamp(variance * 100, 0, 100);
+
+    // Nafas olish — 0.1–0.5 Hz
+    // 5+ sekund ma'lumot kerak
+    if (buf.length < 200) { S.motion.resp = 0; return; }
+
+    const detrended = U.detrend(mags, 90); // ~1.5s oyna
+
+    // Past chastotali komponenta (nafas signali)
+    // 90-sample oyna bilan detrending yuqori chastotani olib tashlaydi
+    const smooth = [];
+    const smoothWin = 15;
+    for (let i = 0; i < detrended.length; i++) {
+      const lo = Math.max(0, i - smoothWin);
+      const hi = Math.min(detrended.length, i + smoothWin + 1);
+      let s = 0;
+      for (let j = lo; j < hi; j++) s += detrended[j];
+      smooth.push(s / (hi - lo));
+    }
+
+    // Peak detection (nafas cho'qqilari)
+    const avgDt = (buf[buf.length-1].t - buf[0].t) / (buf.length - 1);
+    const minSamples = Math.max(2, Math.round(1500 / avgDt)); // 40/min max
+    const peaks = U.detectPeaks(smooth, minSamples, 0.20);
+
+    if (peaks.length < 2) { S.motion.resp = 0; return; }
+
+    const duration = (buf[buf.length-1].t - buf[0].t) / 1000;
+    const rate = peaks.length / duration * 60;
+
+    if (rate > 5 && rate < 40) {
+      S.motion.resp = Math.round(rate);
+    } else {
+      S.motion.resp = 0;
+    }
+  }
+
+  // ============================================================
+  // OVOZ
+  // ============================================================
+  function initAudio() {
+    if (!S.audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { log('⚠️ Web Audio yo\'q.'); return; }
+      S.audioCtx = new AC();
+      S.masterGain = S.audioCtx.createGain();
+      S.masterGain.gain.value = 0.85;
+      S.masterGain.connect(S.audioCtx.destination);
+      if (S.audioCtx.createMediaStreamDestination) {
+        S.streamDest = S.audioCtx.createMediaStreamDestination();
+        S.masterGain.connect(S.streamDest);
       }
+    }
+    if (S.audioCtx.state === 'suspended') S.audioCtx.resume();
+    S.soundOn = !S.soundOn;
+    btnAudio.textContent = S.soundOn ? '🔊 Ovoz: YOQILGAN' : '🔇 Ovoz: O\'CHIQ';
+    btnAudio.style.background = S.soundOn ? '#22c55e' : '#00f5d4';
+    log(S.soundOn ? 'Ovoz faol.' : 'Ovoz o\'chirildi.');
+  }
 
-      label {
-        font-weight: 600;
-        display: block;
-        margin-bottom: 6px;
+  function beep(crit) {
+    if (!S.soundOn || !S.audioCtx) return;
+    const now = S.audioCtx.currentTime;
+    const osc = S.audioCtx.createOscillator();
+    const g = S.audioCtx.createGain();
+    osc.type = crit ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(crit ? 1280 : 900, now);
+    if (crit) osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+    g.gain.setValueAtTime(crit ? 0.30 : 0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.connect(g); g.connect(S.masterGain);
+    osc.start(now); osc.stop(now + 0.085);
+  }
+
+  // ============================================================
+  // EKG MODELI (K⁺ ga bog'langan)
+  // ============================================================
+  function computeEcg(p, k) {
+    const pF = Math.max(0.02, 0.15 - Math.max(0, k - 5.2) * 0.04);
+    const pW = pF * Math.exp(-Math.pow(p - 0.18, 2) / (2 * 0.024*0.024));
+    const qW = -0.17 * Math.exp(-Math.pow(p - 0.35, 2) / (2 * 0.008*0.008));
+    const rW = 1.05 * Math.exp(-Math.pow(p - 0.40, 2) / (2 * 0.011*0.011));
+    const sW = -0.32 * Math.exp(-Math.pow(p - 0.45, 2) / (2 * 0.011*0.011));
+    const tA = 0.22 + Math.max(0, (k - 4.0) * 0.22);
+    const tW = Math.max(0.016, 0.042 - Math.max(0, (k - 4.5) * 0.007));
+    const tWave = tA * Math.exp(-Math.pow(p - 0.66, 2) / (2 * tW*tW));
+    return pW + qW + rW + sW + tWave;
+  }
+
+  function computePleth(p) {
+    const sys = 0.72 * Math.exp(-Math.pow(p - 0.48, 2) / (2 * 0.055*0.055));
+    const dic = 0.32 * Math.exp(-Math.pow(p - 0.68, 2) / (2 * 0.065*0.065));
+    return sys + dic - 0.24;
+  }
+
+  // ============================================================
+  // SLAYTURLAR
+  // ============================================================
+  function updateSliders() {
+    S.k = parseFloat(rngK.value);
+    S.glu = parseFloat(rngGlu.value);
+    S.bpmManual = parseInt(rngBpm.value, 10);
+
+    const critK = (S.k >= 6.0 || S.k <= 2.8);
+    const critG = (S.glu >= 20.0 || S.glu <= 2.5);
+    const critH = S.bpmManual >= 135;
+
+    lblK.textContent = 'K⁺: ' + S.k.toFixed(1);
+    lblK.style.color = critK ? '#ff0055' : '#00f5d4';
+
+    lblGlu.textContent = 'Glyukoza: ' + S.glu.toFixed(1);
+    lblGlu.style.color = critG ? '#ff0055' : '#38bdf8';
+
+    lblBpm.textContent = 'Puls: ' + S.bpmManual;
+    lblBpm.style.color = critH ? '#ff0055' : '#a7f3d0';
+  }
+  rngK.addEventListener('input', updateSliders);
+  rngGlu.addEventListener('input', updateSliders);
+  rngBpm.addEventListener('input', updateSliders);
+
+  // ============================================================
+  // KANVAS RENDER LOOP
+  // ============================================================
+  function render(ts) {
+    if (!S.lastFrame) S.lastFrame = ts;
+    const dt = Math.min(0.05, (ts - S.lastFrame) / 1000) || 0.016;
+    S.lastFrame = ts;
+
+    // --- 500 ms da analiz ---
+    if (ts - S.ppg.lastAnalyze > 500) {
+      S.ppg.lastAnalyze = ts;
+      if (S.camActive) {
+        const s = readCameraSample(ts);
+        if (s) {
+          S.ppg.samples.push(s);
+          const buf = S.ppg.samples;
+          while (buf.length && ts - buf[0].t > 10000) buf.shift();
+          analyzePPG();
+        }
       }
+    }
 
-      input,
-      select,
-      textarea {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 15px;
-        background-color: #0d1117;
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        color: #e6edf3;
-        font-size: 14px;
-        transition: 0.2s ease;
-      }
+    if (S.motionActive && ts - S.motion.lastAnalyze > 500) {
+      S.motion.lastAnalyze = ts;
+      analyzeMotion();
+    }
 
-      input:focus,
-      select:focus,
-      textarea:focus {
-        outline: none;
-        border-color: #58a6ff;
-        box-shadow: 0 0 5px #58a6ff33;
-      }
+    // --- Faol BPM manbai ---
+    if (S.camActive && S.ppg.bpm > 40 && S.ppg.quality > 30) {
+      S.activeBpm = S.ppg.bpm;
+      S.activeBpmSrc = 'real';
+    } else {
+      S.activeBpm = S.bpmManual;
+      S.activeBpmSrc = 'sim';
+    }
+    S.activeResp = S.motionActive ? S.motion.resp : 0;
+    S.activeRespSrc = (S.motionActive && S.motion.resp > 0) ? 'real' : '--';
 
-      button,
-      input[type="submit"] {
-        width: 100%;
-        background-color: #238636;
-        color: white;
-        border: none;
-        padding: 12px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: 600;
-        transition: background 0.3s ease;
-      }
+    // --- Kritik holat ---
+    const isCrit = (
+      S.k >= 6.0 || S.k <= 2.8 ||
+      S.glu >= 20.0 || S.glu <= 2.5 ||
+      S.activeBpm >= 135
+    );
 
-      button:hover,
-      input[type="submit"]:hover {
-        background-color: #2ea043;
-      }
+    monBox.style.borderColor = isCrit ? '#ff0055' : '#00f5d4';
 
-      hr {
-        border: none;
-        border-top: 1px solid #30363d;
-        margin: 25px 0;
-      }
+    // --- Fon ---
+    ctx.fillStyle = isCrit ? '#14040a' : '#050912';
+    ctx.fillRect(0, 0, W, H);
 
-      fieldset {
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 15px;
-      }
-      legend {
-        color: #9da5b4;
-        padding: 0 8px;
-        font-size: 14px;
-      }
-    </style>
-  </head>
+    ctx.strokeStyle = isCrit ? 'rgba(255,0,85,0.12)' : 'rgba(0,245,212,0.09)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-  <body>
-    <section id="ish-arizasi">
-      <form>
-        <div>
-          <h1>Ishga Ariza</h1>
-          <p>
-            Iltimos, biz bilan ishlash uchun ariza topshirish uchun quyidagi
-            shaklni to‘ldiring.
-          </p>
-        </div>
-        <hr />
+    // --- Waveform buferlarini siljitish ---
+    const step = 6;
+    for (let i = 0; i < W - step; i++) {
+      S.ecg[i] = S.ecg[i + step];
+      S.ppgBuf[i] = S.ppgBuf[i + step];
+      S.accBuf[i] = S.accBuf[i + step];
+    }
 
-        <!-- Shaxsiy ma'lumotlar -->
-        <div>
-          <label for="username">To‘liq ism:</label><br />
-          <input
-            type="text"
-            id="username"
-            name="username"
-            placeholder="Ismingizni kiriting"
-            required
-          /><br /><br />
+    // --- Yangi namunalar ---
+    const freq = S.activeBpm / 60;
+    const dPhase = freq * dt / step;
+    const camVal = S.camActive && S.ppg.samples.length > 0
+      ? (S.ppg.samples[S.ppg.samples.length-1].perfusion)
+      : 0;
 
-          <label for="fathername">Otangizning ismi:</label><br />
-          <input
-            type="text"
-            id="fathername"
-            name="fathername"
-            placeholder="Ism kiriting"
-          /><br /><br />
+    // Kamera qiymatini [-1, 1] ga normallashtirish (taxminiy)
+    let ppgNorm = 0;
+    if (S.camActive && S.ppg.samples.length > 30) {
+      const recent = S.ppg.samples.slice(-60).map(s => s.perfusion);
+      const m = U.mean(recent);
+      const sd = U.std(recent) || 1;
+      const z = (camVal - m) / (sd * 2.5);
+      ppgNorm = U.clamp(z, -1, 1);
+    }
 
-          <label for="lastname">Familiyangiz:</label><br />
-          <input
-            type="text"
-            id="lastname"
-            name="lastname"
-            placeholder="Familiya kiriting"
-            required
-          />
-        </div>
+    // Accelerometr
+    let accNorm = 0;
+    if (S.motionActive && S.motion.samples.length > 0) {
+      const last = S.motion.samples.slice(-60).map(s => s.mag);
+      const m = U.mean(last);
+      const sd = U.std(last) || 1;
+      const cur = S.motion.samples[S.motion.samples.length-1].mag;
+      accNorm = U.clamp((cur - m) / (sd * 3), -1, 1);
+    }
 
-        <hr />
+    for (let j = 0; j < step; j++) {
+      S.prevPhase = S.phase;
+      S.phase = (S.phase + dPhase) % 1;
+      if (S.prevPhase < 0.40 && S.phase >= 0.40) beep(isCrit);
+      const noise = (Math.random() - 0.5) * (isCrit ? 0.04 : 0.01);
+      S.ecg[W - step + j] = computeEcg(S.phase, S.k) + noise;
+      S.ppgBuf[W - step + j] = S.camActive ? ppgNorm : computePleth(S.phase);
+      S.accBuf[W - step + j] = S.motionActive ? accNorm : 0;
+    }
 
-        <!-- Tana hajmi -->
-        <div>
-          <label for="uzunlik">Bo‘yingiz (sm):</label><br />
-          <input
-            type="number"
-            id="uzunlik"
-            name="uzunlik"
-            placeholder="Bo‘yingizni kiriting"
-            min="50"
-            max="250"
-            required
-          /><br /><br />
+    // --- HUD ---
+    ctx.fillStyle = 'rgba(15,23,42,0.94)';
+    ctx.fillRect(20, 18, W - 40, 145);
+    ctx.strokeStyle = isCrit ? '#ff0055' : '#00f5d4';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(20, 18, W - 40, 145);
 
-          <label for="vazn">Vazningiz (kg):</label><br />
-          <input
-            type="number"
-            id="vazn"
-            name="vazn"
-            placeholder="Vazningizni kiriting"
-            min="20"
-            max="200"
-            required
-          />
-        </div>
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px monospace';
+    ctx.fillText('TIBEX ICU · REAL SENSOR FUSION', 38, 48);
 
-        <hr />
+    // Tashxis
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = isCrit ? '#ff0055' : '#00f5d4';
+    let diag = 'SINUS RITMI (NORMA)';
+    if (S.k >= 6.0) diag = 'GIPERKALIYEMIYA';
+    else if (S.k <= 2.8) diag = 'GIPOKALIYEMIYA';
+    else if (S.glu >= 20.0) diag = 'DKA XAVFI';
+    else if (S.glu <= 2.5) diag = 'GIPOGLIKEMIK KOMA';
+    else if (S.activeBpm >= 135) diag = 'TAXIKARDIYA';
+    ctx.fillText('TASHXIS: ' + diag, 38, 78);
 
-        <!-- Tug‘ilgan sana -->
-        <fieldset>
-          <legend>Tug‘ilgan sana</legend>
+    // Real va Sim ko'rsatkichlari
+    // HR
+    const hrColor = S.activeBpmSrc === 'real' ? '#22c55e' : '#94a3b8';
+    ctx.fillStyle = hrColor;
+    ctx.font = 'bold 18px monospace';
+    const hrTag = S.activeBpmSrc === 'real' ? '[REAL]' : '[SIM]';
+    ctx.fillText('HR: ' + S.activeBpm + ' BPM ' + hrTag, 38, 105);
 
-          <label for="day">Kun:</label>
-          <input type="number" id="day" name="day" min="1" max="31" required />
+    // Resp
+    const respColor = S.activeRespSrc === 'real' ? '#22c55e' : '#94a3b8';
+    ctx.fillStyle = respColor;
+    ctx.font = 'bold 16px monospace';
+    const respTag = S.activeRespSrc === 'real' ? '[REAL]' : '[--]';
+    ctx.fillText('Nafas: ' + (S.activeResp || '--') + '/min ' + respTag, 380, 105);
 
-          <label for="month">Oy:</label>
-          <input
-            type="number"
-            id="month"
-            name="month"
-            min="1"
-            max="12"
-            required
-          />
+    // K⁺ va Glu
+    ctx.font = 'bold 15px monospace';
+    ctx.fillStyle = (S.k >= 6.0 || S.k <= 2.8) ? '#ff0055' : '#00f5d4';
+    ctx.fillText('K⁺: ' + S.k.toFixed(1) + ' mmol/L', 38, 135);
+    ctx.fillStyle = (S.glu >= 20.0 || S.glu <= 2.5) ? '#ff0055' : '#38bdf8';
+    ctx.fillText('GLU: ' + S.glu.toFixed(1) + ' mmol/L', 380, 135);
 
-          <label for="year">Yil:</label>
-          <input
-            type="number"
-            id="year"
-            name="year"
-            min="1900"
-            max="2025"
-            required
-          />
-        </fieldset>
+    // --- EKG ---
+    const ecgY = 380;
+    const mainCol = isCrit ? '#ff0055' : '#00f5d4';
+    ctx.save();
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      const y = ecgY - S.ecg[x] * 165;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.shadowColor = mainCol;
+    ctx.shadowBlur = 16;
+    ctx.strokeStyle = mainCol;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.restore();
 
-        <hr />
+    // --- PPG ---
+    const ppgY = 530;
+    const ppgCol = S.camActive ? '#f43f5e' : '#38bdf8';
+    ctx.save();
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      const y = ppgY - S.ppgBuf[x] * 85;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.shadowColor = ppgCol;
+    ctx.shadowBlur = 12;
+    ctx.strokeStyle = ppgCol;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+    ctx.restore();
 
-        <!-- Oilaviy holati -->
-        <div>
-          <label for="oilaviy">Oilaviy holatingiz:</label><br />
-          <select id="oilaviy" name="oilaviy" required>
-            <option value="">Tanlang</option>
-            <option value="uylangan">Uylangan / Turmush qurgan</option>
-            <option value="uylanmagan">Uylanmagan / Turmush qurmagan</option>
-          </select>
-        </div>
+    // --- Akselerometr (pastda, ingichka) ---
+    const accY = 620;
+    const accCol = S.motionActive ? '#a78bfa' : '#334155';
+    ctx.save();
+    ctx.beginPath();
+    for (let x = 0; x < W; x++) {
+      const y = accY - S.accBuf[x] * 25;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = accCol;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
 
-        <hr />
+    // Kanal yorliqlari
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText('I-KANAL: EKG Lead II', 26, 195);
+    ctx.fillText(S.camActive ? 'II-KANAL: KAMERA PPG (REAL)' : 'II-KANAL: SpO2 PLETH', 26, 440);
+    ctx.fillStyle = S.motionActive ? '#a78bfa' : '#475569';
+    ctx.fillText('III-KANAL: AKSELEROMETR (nafas)', 26, 605);
 
-        <!-- Yashash manzili -->
-        <div>
-          <label for="manzil">Yashash manzilingiz:</label><br />
-          <textarea
-            id="manzil"
-            name="manzil"
-            rows="3"
-            placeholder="Viloyat, tuman, ko‘cha..."
-            required
-          ></textarea>
-        </div>
+    // Pastki imzo
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillText('> Burishtirma aftingni, texnika bu!', 26, 660);
 
-        <hr />
+    // --- Kamera sifat ko'rsatkichi ---
+    if (S.camActive) {
+      camQualityL.textContent = S.ppg.quality > 0
+        ? (S.ppg.quality > 60 ? '✓ Yaxshi signal' : (S.ppg.quality > 30 ? '~ O\'rtacha signal' : '✗ Barmoqni qimirlatmang'))
+        : 'Barmoqni kameraga bosing';
+      camQualityR.textContent = 'SQI: ' + S.ppg.quality + '%';
+    }
 
-        <!-- Aloqa ma'lumotlari -->
-        <div>
-          <label for="telefon">Telefon raqam:</label><br />
-          <input
-            type="tel"
-            id="telefon"
-            name="telefon"
-            placeholder="+998 90 123 45 67"
-            pattern="^\+998\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$"
-            required
-          /><br /><br />
+    // --- Bildirishnoma (kritik holat) ---
+    if (isCrit && 'Notification' in window && Notification.permission === 'granted' && ts - S.notifLast > 15000) {
+      S.notifLast = ts;
+      try {
+        new Notification('🚨 TIBEX ICU: KRITIK HOLAT', {
+          body: 'K⁺=' + S.k.toFixed(1) + '  GLU=' + S.glu.toFixed(1) + '  HR=' + S.activeBpm,
+          tag: 'tibex-crit'
+        });
+      } catch (e) {}
+    }
 
-          <label for="email">Email:</label><br />
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="example@gmail.com"
-            required
-          />
-        </div>
+    requestAnimationFrame(render);
+  }
 
-        <hr />
+  // ============================================================
+  // VIDEO YOZISH
+  // ============================================================
+  function pickMime() {
+    if (typeof MediaRecorder === 'undefined') return '';
+    const list = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus',
+                  'video/webm;codecs=vp9', 'video/webm;codecs=vp8',
+                  'video/webm', 'video/mp4'];
+    for (const m of list) {
+      if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m;
+    }
+    return '';
+  }
 
-        <!-- Kompyuter va tillar -->
-<fieldset>
-  <legend>Kompyuter bilimlari</legend>
-  <table class="skills-table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Boshlovchi</th>
-        <th>Boshlang‘ich</th>
-        <th>Murakkab</th>
-        <th>Mutaxassis</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Excel</td>
-        <td><input type="radio" name="excel" value="boshlovchi" required></td>
-        <td><input type="radio" name="excel" value="boshlangich"></td>
-        <td><input type="radio" name="excel" value="murakkab"></td>
-        <td><input type="radio" name="excel" value="mutaxassis"></td>
-      </tr>
-      <tr>
-        <td>So‘z</td>
-        <td><input type="radio" name="word" value="boshlovchi" required></td>
-        <td><input type="radio" name="word" value="boshlangich"></td>
-        <td><input type="radio" name="word" value="murakkab"></td>
-        <td><input type="radio" name="word" value="mutaxassis"></td>
-      </tr>
-      <tr>
-        <td>1C</td>
-        <td><input type="radio" name="onec" value="boshlovchi" required></td>
-        <td><input type="radio" name="onec" value="boshlangich"></td>
-        <td><input type="radio" name="onec" value="murakkab"></td>
-        <td><input type="radio" name="onec" value="mutaxassis"></td>
-      </tr>
-      <tr>
-        <td>Dasturlash tili</td>
-        <td><input type="radio" name="coding" value="boshlovchi" required></td>
-        <td><input type="radio" name="coding" value="boshlangich"></td>
-        <td><input type="radio" name="coding" value="murakkab"></td>
-        <td><input type="radio" name="coding" value="mutaxassis"></td>
-      </tr>
-    </tbody>
-  </table>
-</fieldset>
+  async function recordVideo() {
+    if (typeof canvas.captureStream !== 'function' || typeof MediaRecorder === 'undefined') {
+      log('⚠️ Bu brauzerda video yozish mavjud emas.');
+      return;
+    }
+    if (!S.soundOn) initAudio();
 
+    btnRec.disabled = true;
+    btnRec.textContent = '🔴 YOZILMOQDA...';
+    log('🎬 6 soniya. Slayderlarni o\'ynating!');
 
-          <br /><br />
+    const vStream = canvas.captureStream(60);
+    const tracks = [...vStream.getVideoTracks()];
 
-          <label for="english">Ingliz tili darajasi:</label><br />
-          <select id="english" name="english">
-            <option value="">Tanlang</option>
-            <option value="beginner">Beginner</option>
-            <option value="intermediate">Intermediate</option>
-            <option value="advanced">Advanced</option>
-          </select>
-        </div>
+    if (S.streamDest && S.streamDest.stream.getAudioTracks().length > 0) {
+      tracks.push(...S.streamDest.stream.getAudioTracks());
+    }
+    if (S.micStream && S.micStream.getAudioTracks().length > 0) {
+      tracks.push(...S.micStream.getAudioTracks());
+    }
 
-        <hr />
+    const mime = pickMime();
+    let rec;
+    try {
+      rec = new MediaRecorder(new MediaStream(tracks), mime ? { mimeType: mime } : undefined);
+    } catch (e) {
+      log('⚠️ MediaRecorder: ' + e.message);
+      btnRec.disabled = false;
+      btnRec.textContent = '🎬 6s Video';
+      return;
+    }
 
-        <!-- Hujjat va rezyume -->
-        <div>
-          <label for="passport">Ariza beruvchi hujjati (diplom, sertifikat):</label><br />
-          <input
-            type="file"
-            id="passport"
-            name="passport"
-            accept=".pdf,.jpg,.png"
-            required
-          /><br /><br />
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+    rec.onstop = () => {
+      const ext = mime.indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+      const blob = new Blob(chunks, { type: mime || 'video/webm' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'TIBEX_ICU_' + Date.now() + '.' + ext;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      btnRec.disabled = false;
+      btnRec.textContent = '🎬 6s Video';
+      log('✅ Video yuklandi (' + (blob.size/1024).toFixed(0) + ' KB).');
+    };
 
-          <label for="resume">Rezyume yuklang:</label><br />
-          <input
-            type="file"
-            id="resume"
-            name="resume"
-            accept=".pdf,.docx"
-            required
-          />
-        </div>
+    rec.start();
+    setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, 6000);
+  }
 
-        <hr />
+  // ============================================================
+  // TELEGRAM
+  // ============================================================
+  async function sendTelegram() {
+    const token = document.getElementById('botToken').value.trim();
+    const chat = document.getElementById('chatId').value.trim();
+    const isCrit = (S.k >= 6.0 || S.k <= 2.8 || S.glu >= 20.0 || S.glu <= 2.5 || S.activeBpm >= 135);
 
-        <!-- Xat yoki izoh -->
-        <div>
-          <label for="izoh">Biriktirilgan xabar:</label><br />
-          <textarea
-            id="izoh"
-            name="izoh"
-            rows="4"
-            placeholder="Agar xohlasangiz, o‘zingiz haqingizda qisqacha yozing..."
-          ></textarea>
-        </div>
+    const msg =
+      '🚨 *TIBEX ICU v3.0*\n' +
+      '⚠️ Holat: ' + (isCrit ? 'KRITIK' : 'Normal') + '\n' +
+      '❤️ HR: ' + S.activeBpm + ' BPM [' + S.activeBpmSrc + ']\n' +
+      '🫁 Nafas: ' + (S.activeResp || '--') + '/min [' + S.activeRespSrc + ']\n' +
+      '🩸 K⁺: ' + S.k.toFixed(1) + ' mmol/L\n' +
+      '🍬 Glyukoza: ' + S.glu.toFixed(1) + ' mmol/L\n' +
+      '📱 Harakat: ' + (S.motionActive ? 'Faol' : 'O\'chiq') + '\n' +
+      '📷 Kamera: ' + (S.camActive ? 'SQI=' + S.ppg.quality + '%' : 'O\'chiq') + '\n\n' +
+      '_Burishtirma aftingni, texnika bu!_';
 
-        <br />
-        <button type="submit">Jo‘natish</button>
-      </form>
-    </section>
-  </body>
+    if (!token || !chat) {
+      log('💡 Bot Token va Chat ID kiriting.');
+      return;
+    }
+
+    log('⏳ Telegram yuborilmoqda...');
+    try {
+      const res = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chat, text: msg, parse_mode: 'Markdown' })
+      });
+      const data = await res.json();
+      if (data.ok) log('✅ Telegramga yuborildi!');
+      else log('❌ Telegram: ' + (data.description || 'xato'));
+    } catch (e) {
+      log('❌ Tarmoq: ' + e.message);
+    }
+  }
+
+  // ============================================================
+  // SENSOR HOLATI
+  // ============================================================
+  function showSensorStatus() {
+    const lines = [
+      '📷 Kamera: ' + (S.camActive ? 'FAOL, ' + S.ppg.samples.length + ' namuna, SQI=' + S.ppg.quality + '%' : 'O\'CHIQ'),
+      '   HR (real): ' + (S.ppg.bpm || '---') + ' BPM',
+      '📱 Motion: ' + (S.motionActive ? 'FAOL, ' + S.motion.samples.length + ' namuna' : 'O\'CHIQ'),
+      '   Nafas: ' + (S.motion.resp || '---') + '/min',
+      '   Harakat: ' + Math.round(S.motion.motionLevel) + '%',
+      '🎤 Mikrofon: ' + (S.micStream ? 'FAOL' : 'O\'CHIQ'),
+      '🔔 Bildirishnoma: ' + ('Notification' in window ? Notification.permission : 'yo\'q'),
+      '🔊 Ovoz: ' + (S.soundOn ? 'YOQILGAN' : 'O\'CHIQ')
+    ];
+    log(lines.join('\n'));
+  }
+
+  // ============================================================
+  // TIKLASH
+  // ============================================================
+  function resetAll() {
+    rngK.value = '4.2';
+    rngGlu.value = '5.2';
+    rngBpm.value = '75';
+    updateSliders();
+    S.ecg.fill(0);
+    S.ppgBuf.fill(0);
+    S.accBuf.fill(0);
+    S.phase = 0;
+    S.prevPhase = 0;
+    log('🔄 Ko\'rsatkichlar normaga qaytarildi.');
+  }
+
+  // ============================================================
+  // HODISALAR
+  // ============================================================
+  btnAudio.addEventListener('click', initAudio);
+  btnRec.addEventListener('click', recordVideo);
+  btnReset.addEventListener('click', resetAll);
+  btnTg.addEventListener('click', sendTelegram);
+  btnStatus.addEventListener('click', showSensorStatus);
+  btnCamT.addEventListener('click', () => btnPermCam.click());
+
+  // ============================================================
+  // ISHGA TUSHIRISH
+  // ============================================================
+  (async function init() {
+    // Oldingi ruxsat holatlarini ko'rsatish
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') setPermBtn(btnPermNotif, 'on', '✓ Faol');
+      else if (Notification.permission === 'denied') setPermBtn(btnPermNotif, 'denied', '✗ Rad etilgan');
+    } else {
+      setPermBtn(btnPermNotif, 'unsupported', 'Qo\'llanmaydi');
+    }
+
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const p = await navigator.permissions.query({ name: 'camera' });
+        if (p.state === 'granted') setPermBtn(btnPermCam, 'on', '✓ Faol');
+        else if (p.state === 'denied') setPermBtn(btnPermCam, 'denied', '✗ Rad etilgan');
+      } catch (e) {}
+      try {
+        const p = await navigator.permissions.query({ name: 'microphone' });
+        if (p.state === 'granted') setPermBtn(btnPermMic, 'on', '✓ Faol');
+        else if (p.state === 'denied') setPermBtn(btnPermMic, 'denied', '✗ Rad etilgan');
+      } catch (e) {}
+    }
+
+    // Motion mavjudligini tekshirish
+    if (typeof DeviceMotionEvent === 'undefined') {
+      setPermBtn(btnPermMotion, 'unsupported', 'Qo\'llanmaydi');
+    } else if (typeof DeviceMotionEvent.requestPermission !== 'function') {
+      setPermBtn(btnPermMotion, '', 'Yoqish');
+    } else {
+      setPermBtn(btnPermMotion, '', 'So\'rash');
+    }
+
+    updateSliders();
+    requestAnimationFrame(render);
+  })();
+
+})();
+</script>
+</body>
 </html>
